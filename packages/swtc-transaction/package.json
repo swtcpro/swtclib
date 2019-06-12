@@ -1,8 +1,10 @@
 {
   "name": "swtc-transaction",
-  "version": "1.2.10",
+  "version": "1.2.14",
   "description": "swtc transaction package",
   "main": "src/index.js",
+  "unpkg": "dist/swtc-transaction.js",
+  "jsdelivr": "dist/swtc-transaction.js",
   "directories": {
     "lib": "lib",
     "test": "test"
@@ -15,11 +17,8 @@
     "tsc": "mkdir -p src && cp tssrc/*js src/ && tsc",
     "tslint": "tslint tssrc/*.ts",
     "eslint": "eslint tssrc/*.js",
-    "gulp": "gulp dev",
-    "gulp:production": "gulp production",
-    "build": "webpack",
-    "build:production": "webpack --config prod.webpack.config",
-    "dev": "webpack-dev-server",
+    "build": "npm run tsc && webpack",
+    "build:dev": "npm run tsc && webpack --mode development",
     "test": "mocha \"test/test*.js\"",
     "test:extended": "mocha \"test/*.js\"",
     "test:nyc": "nyc --reporter=html --reporter=text mocha test/test*.js"
@@ -43,9 +42,9 @@
     "axios": "^0.18.0",
     "bignumber.js": "^5.0.0",
     "lodash": "^4.17.11",
-    "swtc-serializer": "^2.1.3",
-    "swtc-utils": "^1.1.7",
-    "url": "git+https://github.com/swtcca/swtclib.git",
+    "swtc-serializer": "^2.1.4",
+    "swtc-utils": "^1.1.8",
+    "url": "^0.11.0",
     "utf8": "^2.1.2"
   },
   "devDependencies": {
@@ -53,7 +52,6 @@
     "chai": "^4.2.0",
     "chai-json-schema": "^1.5.0",
     "eslint": "^5.16.0",
-    "gulp": "^4.0.0",
     "jsbn": "^1.1.0",
     "lru-cache": "^4.0.1",
     "mocha": "^6.1.4",
@@ -62,10 +60,10 @@
     "pretty-quick": "^1.11.0",
     "sha1": "^1.1.1",
     "sinon": "^7.2.4",
+    "swtc-tum3": "^0.1.2",
     "tslint": "^5.16.0",
     "typescript": "^3.4.5",
     "webpack": "^4.29.3",
-    "webpack-cli": "^3.2.3",
-    "webpack-stream": "^5.2.1"
+    "webpack-cli": "^3.2.3"
   }
 }

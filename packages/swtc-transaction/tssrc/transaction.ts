@@ -3,6 +3,23 @@ import { Factory as SerializerFactory } from "swtc-serializer"
 import { Factory as UtilsFactory } from "swtc-utils"
 import { Factory as WalletFactory } from "swtc-wallet"
 import * as utf8 from "utf8"
+import {
+  // IMarker
+  // ICurrency,
+  // IAmount,
+  // ISwtcTxOptions,
+  IPaymentTxOptions,
+  IOfferCreateTxOptions,
+  IOfferCancelTxOptions,
+  IContractInitTxOptions,
+  IContractInvokeTxOptions,
+  IContractDeployTxOptions,
+  IContractCallTxOptions,
+  ISignTxOptions,
+  IAccountSetTxOptions,
+  IRelationTxOptions,
+  IAmount
+} from "./types"
 
 function Factory(Wallet = WalletFactory("jingtum")) {
   if (!Wallet.hasOwnProperty("KeyPair")) {
@@ -82,7 +99,7 @@ function Factory(Wallet = WalletFactory("jingtum")) {
      *    amount payment amount, required
      * @returns {Transaction}
      */
-    public static buildPaymentTx(options, remote: any = {}) {
+    public static buildPaymentTx(options: IPaymentTxOptions, remote: any = {}) {
       const tx = new Transaction(remote)
       if (options === null || typeof options !== "object") {
         tx.tx_json.obj = new Error("invalid options type")
@@ -129,7 +146,10 @@ function Factory(Wallet = WalletFactory("jingtum")) {
      *    taker_pays|gets amount to take in, required
      * @returns {Transaction}
      */
-    public static buildOfferCreateTx(options, remote: any = {}) {
+    public static buildOfferCreateTx(
+      options: IOfferCreateTxOptions,
+      remote: any = {}
+    ) {
       const tx = new Transaction(remote)
       if (options === null || typeof options !== "object") {
         tx.tx_json.obj = new Error("invalid options type")
@@ -201,7 +221,10 @@ function Factory(Wallet = WalletFactory("jingtum")) {
      *    sequence, required
      * @returns {Transaction}
      */
-    public static buildOfferCancelTx(options, remote: any = {}) {
+    public static buildOfferCancelTx(
+      options: IOfferCancelTxOptions,
+      remote: any = {}
+    ) {
       const tx = new Transaction(remote)
       if (options === null || typeof options !== "object") {
         tx.tx_json.obj = new Error("invalid options type")
@@ -245,17 +268,23 @@ function Factory(Wallet = WalletFactory("jingtum")) {
      *    payload, required
      * @returns {Transaction}
      */
-    public static initContractTx(options, remote: any = {}) {
+    public static initContractTx(
+      options: IContractInitTxOptions,
+      remote: any = {}
+    ) {
       const tx = new Transaction(remote)
       if (options === null || typeof options !== "object") {
         tx.tx_json.obj = new Error("invalid options type")
         return tx
       }
       if (remote._solidity) {
+        let params = []
         const account = options.account
         const amount = options.amount
         const payload = options.payload
-        const params = options.params || []
+        if ("params" in options) {
+          params = options.params
+        }
         const abi = options.abi
         if (!utils.isValidAddress(account)) {
           tx.tx_json.account = new Error("invalid address")
@@ -300,7 +329,10 @@ function Factory(Wallet = WalletFactory("jingtum")) {
         throw new Error("initialize your remote for solidity first")
       }
     }
-    public static invokeContractTx(options, remote: any = {}) {
+    public static invokeContractTx(
+      options: IContractInvokeTxOptions,
+      remote: any = {}
+    ) {
       const tx = new Transaction(remote)
       if (options === null || typeof options !== "object") {
         tx.tx_json.obj = new Error("invalid options type")
@@ -402,7 +434,10 @@ function Factory(Wallet = WalletFactory("jingtum")) {
       }
     }
 
-    public static deployContractTx(options, remote: any = {}) {
+    public static deployContractTx(
+      options: IContractDeployTxOptions,
+      remote: any = {}
+    ) {
       const tx = new Transaction(remote)
       if (options === null || typeof options !== "object") {
         tx.tx_json.obj = new Error("invalid options type")
@@ -462,16 +497,22 @@ function Factory(Wallet = WalletFactory("jingtum")) {
      *    params, required
      * @returns {Transaction}
      */
-    public static callContractTx(options, remote: any = {}) {
+    public static callContractTx(
+      options: IContractCallTxOptions,
+      remote: any = {}
+    ) {
       const tx = new Transaction(remote)
       if (options === null || typeof options !== "object") {
         tx.tx_json.obj = new Error("invalid options type")
         return tx
       }
+      let params = []
       const account = options.account
       const des = options.destination
-      const params = options.params
-      const foo = options.foo // 函数名
+      if ("params" in options) {
+        params = options.params || []
+      }
+      const foo = options.func || options.foo // 函数名
       if (!utils.isValidAddress(account)) {
         tx.tx_json.account = new Error("invalid address")
         return tx
@@ -520,7 +561,7 @@ function Factory(Wallet = WalletFactory("jingtum")) {
     }
 
     // signer set, seems discontinued
-    public static buildSignTx(options, remote: any = {}) {
+    public static buildSignTx(options: ISignTxOptions, remote: any = {}) {
       const tx = new Transaction(remote)
       if (options === null || typeof options !== "object") {
         tx.tx_json.obj = new Error("invalid options type")
@@ -539,7 +580,10 @@ function Factory(Wallet = WalletFactory("jingtum")) {
      *    type: Transaction.AccountSetTypes
      * @returns {Transaction}
      */
-    public static buildAccountSetTx(options, remote: any = {}) {
+    public static buildAccountSetTx(
+      options: IAccountSetTxOptions,
+      remote: any = {}
+    ) {
       const tx = new Transaction(remote)
       if (options === null || typeof options !== "object") {
         tx.tx_json.obj = new Error("invalid options type")
@@ -569,7 +613,10 @@ function Factory(Wallet = WalletFactory("jingtum")) {
      *    quality_in, optional
      * @returns {Transaction}
      */
-    public static buildRelationTx(options, remote: any = {}) {
+    public static buildRelationTx(
+      options: IRelationTxOptions,
+      remote: any = {}
+    ) {
       const tx = new Transaction(remote)
       if (options === null || typeof options !== "object") {
         tx.tx_json.obj = new Error("invalid options type")
@@ -878,7 +925,7 @@ function Factory(Wallet = WalletFactory("jingtum")) {
      * set secret
      * @param secret
      */
-    public setSecret(secret) {
+    public setSecret(secret: string) {
       if (!baselib.isValidSecret(secret)) {
         this.tx_json._secret = new Error("invalid secret")
         return
@@ -945,7 +992,7 @@ function Factory(Wallet = WalletFactory("jingtum")) {
      * when path set, sendmax is also set.
      * @param path
      */
-    public setPath(key) {
+    public setPath(key: string) {
       // sha1 string
       if (typeof key !== "string" || key.length !== 40) {
         return new Error("invalid path key")
@@ -968,7 +1015,7 @@ function Factory(Wallet = WalletFactory("jingtum")) {
      * limit send max amount
      * @param amount
      */
-    public setSendMax(amount) {
+    public setSendMax(amount: IAmount) {
       if (!utils.isValidAmount(amount)) {
         return new Error("invalid send max amount")
       }
@@ -1009,8 +1056,8 @@ function Factory(Wallet = WalletFactory("jingtum")) {
     }
 
     /* set sequence */
-    public setSequence(sequence) {
-      if (!/^\+?[1-9][0-9]*$/.test(sequence)) {
+    public setSequence(sequence: string | number) {
+      if (!/^\+?[1-9][0-9]*$/.test(String(sequence))) {
         // 正整数
         this.tx_json.Sequence = new TypeError("invalid sequence")
         return this
@@ -1059,9 +1106,7 @@ function Factory(Wallet = WalletFactory("jingtum")) {
         // use api.jingtum.com to get sequence
         axios
           .get(
-            `https://api.jingtum.com/v2/accounts/${
-              self.tx_json.Account
-            }/balances`
+            `https://api.jingtum.com/v2/accounts/${self.tx_json.Account}/balances`
           )
           .then(response => {
             self.tx_json.Sequence = response.data.sequence
@@ -1073,7 +1118,11 @@ function Factory(Wallet = WalletFactory("jingtum")) {
       }
     }
 
-    public async signPromise(secret = "", memo = "", sequence = 0) {
+    public async signPromise(
+      secret = "",
+      memo = "",
+      sequence = 0
+    ): Promise<any> {
       if (!this.tx_json) {
         return Promise.reject("a valid transaction is expected")
       } else if ("blob" in this.tx_json) {
@@ -1153,7 +1202,11 @@ function Factory(Wallet = WalletFactory("jingtum")) {
       }
     }
 
-    public async submitPromise(secret = "", memo = "", sequence = 0) {
+    public async submitPromise(
+      secret = "",
+      memo = "",
+      sequence = 0
+    ): Promise<any> {
       for (const key in this.tx_json) {
         if (this.tx_json[key] instanceof Error) {
           return Promise.reject(this.tx_json[key].message)
@@ -1276,9 +1329,7 @@ function Factory(Wallet = WalletFactory("jingtum")) {
         } else {
           // use api.jingtum.com to get sequence
           response = await axios.get(
-            `https://api.jingtum.com/v2/accounts/${
-              this.tx_json.Account
-            }/balances`
+            `https://api.jingtum.com/v2/accounts/${this.tx_json.Account}/balances`
           )
           this.tx_json.Sequence = response.data.sequence
           return Promise.resolve(this)

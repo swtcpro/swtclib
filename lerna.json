@@ -1,11 +1,9 @@
 {
-  "packages": [
-    "packages/*"
-  ],
+  "packages": ["packages/*"],
   "version": "independent",
   "command": {
     "publish": {
-      "ignoreChanges": ["ignored-file", "*.md"],
+      "ignoreChanges": ["ignore.file", "*.md"],
       "message": "chore(release): publish"
     },
     "bootstrap": {

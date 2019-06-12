@@ -7,6 +7,33 @@ import { Transaction } from "swtc-transaction"
 import LRU from "lru-cache"
 import isNumber from "lodash/isNumber"
 import sha1 from "sha1"
+import {
+  IRemoteOptions,
+  IRequestLedgerOptions,
+  IRequestAccountsOptions,
+  IRequestTxOptions,
+  IRequestAccountInfoOptions,
+  IRequestAccountTumsOptions,
+  IRequestAccountRelationsOptions,
+  IRequestAccountOffersOptions,
+  IRequestAccountTxOptions,
+  IRequestOrderBookOptions
+} from "./types"
+import {
+  // IMarker,
+  // IAmount,
+  // ISwtcTxOptions,
+  IPaymentTxOptions,
+  IOfferCreateTxOptions,
+  IOfferCancelTxOptions,
+  IContractInitTxOptions,
+  IContractInvokeTxOptions,
+  IContractDeployTxOptions,
+  IContractCallTxOptions,
+  ISignTxOptions,
+  IAccountSetTxOptions,
+  IRelationTxOptions
+} from "./types"
 
 const Wallet = Transaction.Wallet
 const utils = Transaction.utils
@@ -57,7 +84,7 @@ class Remote extends EventEmitter {
   private _cache
   private _paths
   private _solidity: boolean = false
-  constructor(options) {
+  constructor(options: IRemoteOptions = { local_sign: true }) {
     super()
     const _opts = options || {}
     this._local_sign = true
@@ -307,7 +334,7 @@ class Remote extends EventEmitter {
    * @param options
    * @returns {Request}
    */
-  public requestLedger(options) {
+  public requestLedger(options: IRequestLedgerOptions) {
     // if (typeof options !== 'object') {
     //     return new Error('invalid options type');
     // }
@@ -331,7 +358,10 @@ class Remote extends EventEmitter {
       request.message.type = new Error("invalid options type")
       return request
     }
-    if (options.ledger_index && !/^[1-9]\d{0,9}$/.test(options.ledger_index)) {
+    if (
+      options.ledger_index &&
+      !/^[1-9]\d{0,9}$/.test(String(options.ledger_index))
+    ) {
       // 支持0-10位数字查询
       request.message.ledger_index = new Error("invalid ledger_index")
       return request
@@ -367,13 +397,16 @@ class Remote extends EventEmitter {
   /*
    * get all accounts at some ledger_index
    */
-  public requestAccounts = function(options) {
+  public requestAccounts = function(options: IRequestAccountsOptions) {
     const request = new Request(this, "account_count")
     if (options === null || typeof options !== "object") {
       request.message.type = new Error("invalid options type")
       return request
     }
-    if (options.ledger_index && !/^[1-9]\d{0,9}$/.test(options.ledger_index)) {
+    if (
+      options.ledger_index &&
+      !/^[1-9]\d{0,9}$/.test(String(options.ledger_index))
+    ) {
       // 支持0-10位数字查询
       request.message.ledger_index = new Error("invalid ledger_index")
       return request
@@ -398,7 +431,7 @@ class Remote extends EventEmitter {
    * }
    * @returns {Request}
    */
-  public requestTx(options) {
+  public requestTx(options: IRequestTxOptions) {
     const request = new Request(this, "tx")
     if (options === null || typeof options !== "object") {
       request.message.type = new Error("invalid options type")
@@ -422,7 +455,7 @@ class Remote extends EventEmitter {
    *    ledger_index=xxx, ledger_hash=xxx, or ledger=closed|current|validated
    * @returns {Request}
    */
-  public requestAccountInfo(options) {
+  public requestAccountInfo(options: IRequestAccountInfoOptions) {
     const request = new Request(this)
 
     if (options === null || typeof options !== "object") {
@@ -443,7 +476,7 @@ class Remote extends EventEmitter {
    *    no limit
    * @returns {Request}
    */
-  public requestAccountTums(options) {
+  public requestAccountTums(options: IRequestAccountTumsOptions) {
     const request = new Request(this)
 
     if (options === null || typeof options !== "object") {
@@ -464,7 +497,7 @@ class Remote extends EventEmitter {
    *    marker for more relations
    * @returns {Request}
    */
-  public requestAccountRelations(options) {
+  public requestAccountRelations(options: IRequestAccountRelationsOptions) {
     const request = new Request(this)
 
     if (options === null || typeof options !== "object") {
@@ -496,7 +529,7 @@ class Remote extends EventEmitter {
    *    limit min is 200, marker
    * @returns {Request}
    */
-  public requestAccountOffers(options) {
+  public requestAccountOffers(options: IRequestAccountOffersOptions) {
     const request = new Request(this)
 
     if (options === null || typeof options !== "object") {
@@ -518,7 +551,7 @@ class Remote extends EventEmitter {
    *    descending, if returns recently tx records
    * @returns {Request}
    */
-  public requestAccountTx(options) {
+  public requestAccountTx(options: IRequestAccountTxOptions) {
     const request = new Request(this, "account_tx", data => {
       const results = []
       for (const data_transaction of data.transactions) {
@@ -580,7 +613,7 @@ class Remote extends EventEmitter {
    * @param options
    * @returns {Request}
    */
-  public requestOrderBook(options) {
+  public requestOrderBook(options: IRequestOrderBookOptions) {
     const request = new Request(this, "book_offers")
     if (options === null || typeof options !== "object") {
       request.message.type = new Error("invalid options type")
@@ -597,7 +630,7 @@ class Remote extends EventEmitter {
       return request
     }
     if (isNumber(options.limit)) {
-      options.limit = parseInt(options.limit, 10)
+      options.limit = parseInt(String(options.limit), 10)
     }
 
     request.message.taker_gets = taker_gets
@@ -710,14 +743,20 @@ class Remote extends EventEmitter {
    *    amount payment amount, required
    * @returns {Transaction}
    */
-  public buildPaymentTx(options) {
+  public buildPaymentTx(options: IPaymentTxOptions) {
     return Transaction.buildPaymentTx(options, this)
   }
 
-  public initContract(options) {
+  public initContract(options: IContractInitTxOptions) {
     return Transaction.initContractTx(options, this)
   }
-  public invokeContract(options) {
+  public invokeContract(options: IContractInvokeTxOptions) {
+    return Transaction.invokeContractTx(options, this)
+  }
+  public initContractTx(options: IContractInitTxOptions) {
+    return Transaction.initContractTx(options, this)
+  }
+  public invokeContractTx(options: IContractInvokeTxOptions) {
     return Transaction.invokeContractTx(options, this)
   }
   public AlethEvent = function(options) {
@@ -754,7 +793,7 @@ class Remote extends EventEmitter {
    *    payload, required
    * @returns {Transaction}
    */
-  public deployContractTx(options) {
+  public deployContractTx(options: IContractDeployTxOptions) {
     return Transaction.deployContractTx(options, this)
   }
 
@@ -766,11 +805,11 @@ class Remote extends EventEmitter {
    *    params, required
    * @returns {Transaction}
    */
-  public callContractTx(options) {
+  public callContractTx(options: IContractCallTxOptions) {
     return Transaction.callContractTx(options, this)
   }
 
-  public buildSignTx(options) {
+  public buildSignTx(options: ISignTxOptions) {
     return Transaction.buildSignTx(options, this)
   }
 
@@ -798,7 +837,7 @@ class Remote extends EventEmitter {
    *    quality_in, optional
    * @returns {Transaction}
    */
-  public buildRelationTx(options) {
+  public buildRelationTx(options: IRelationTxOptions) {
     return Transaction.buildRelationTx(options, this)
   }
 
@@ -808,7 +847,7 @@ class Remote extends EventEmitter {
    *    type: Transaction.AccountSetTypes
    * @returns {Transaction}
    */
-  public buildAccountSetTx(options) {
+  public buildAccountSetTx(options: IAccountSetTxOptions) {
     return Transaction.buildAccountSetTx(options, this)
   }
 
@@ -821,7 +860,7 @@ class Remote extends EventEmitter {
    *    taker_pays|gets amount to take in, required
    * @returns {Transaction}
    */
-  public buildOfferCreateTx(options) {
+  public buildOfferCreateTx(options: IOfferCreateTxOptions) {
     return Transaction.buildOfferCreateTx(options, this)
   }
 
@@ -832,7 +871,7 @@ class Remote extends EventEmitter {
    *    sequence, required
    * @returns {Transaction}
    */
-  public buildOfferCancelTx(options) {
+  public buildOfferCancelTx(options: IOfferCancelTxOptions) {
     return Transaction.buildOfferCancelTx(options, this)
   }
 
