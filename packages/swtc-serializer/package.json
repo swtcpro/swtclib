@@ -1,6 +1,6 @@
 {
   "dependencies": {
-    "bignumber.js": "^5.0.0",
+    "bignumber.js": "^8.1.1",
     "bn-plus.js": "^1.0.0",
     "extend": "^3.0.2",
     "jsbn": "^1.1.0",
@@ -46,7 +46,7 @@
     "coveralls": "nyc report --reporter=text-lcov | coveralls",
     "test:nyc": "nyc --reporter=html --reporter=text mocha test/test*.js"
   },
-  "version": "2.1.4",
+  "version": "2.1.5",
   "author": "Lospring Liu",
   "bugs": {
     "url": "git+https://github.com/swtcca/swtclib.git"

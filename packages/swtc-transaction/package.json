@@ -1,6 +1,6 @@
 {
   "name": "swtc-transaction",
-  "version": "1.2.14",
+  "version": "1.2.16",
   "description": "swtc transaction package",
   "main": "src/index.js",
   "unpkg": "dist/swtc-transaction.js",
@@ -40,10 +40,10 @@
   "homepage": "https://github.com/swtcca/swtclib",
   "dependencies": {
     "axios": "^0.18.0",
-    "bignumber.js": "^5.0.0",
+    "bignumber.js": "^8.1.1",
     "lodash": "^4.17.11",
-    "swtc-serializer": "^2.1.4",
-    "swtc-utils": "^1.1.8",
+    "swtc-serializer": "^2.1.5",
+    "swtc-utils": "^1.1.9",
     "url": "^0.11.0",
     "utf8": "^2.1.2"
   },
@@ -60,7 +60,6 @@
     "pretty-quick": "^1.11.0",
     "sha1": "^1.1.1",
     "sinon": "^7.2.4",
-    "swtc-tum3": "^0.1.2",
     "tslint": "^5.16.0",
     "typescript": "^3.4.5",
     "webpack": "^4.29.3",

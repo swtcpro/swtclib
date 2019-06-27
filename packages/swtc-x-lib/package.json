@@ -1,11 +1,13 @@
 {
   "name": "swtc-x-lib",
-  "version": "1.0.6",
+  "version": "1.0.8",
   "description": "swtc-x-lib for jingtum alliance chains",
   "main": "src/index.js",
   "unpkg": "dist/swtc-x-lib.js",
   "jsdelivr": "dist/swtc-x-lib.js",
   "browser": {
+    "swtc-tum3": false,
+    "tum3-eth-abi": false,
     "ws": "./src/wswrapper.js"
   },
   "directories": {
@@ -48,12 +50,12 @@
     }
   },
   "dependencies": {
-    "bignumber.js": "^5.0.0",
+    "bignumber.js": "^8.1.1",
     "lru-cache": "^4.0.1",
     "sha1": "^1.1.1",
     "swtc-nativescript": "^1.0.0",
-    "swtc-transaction": "^1.2.14",
-    "swtc-utils": "^1.1.8",
+    "swtc-transaction": "^1.2.16",
+    "swtc-utils": "^1.1.9",
     "ws": "^6.2.1"
   },
   "devDependencies": {
@@ -70,7 +72,6 @@
     "pretty-quick": "^1.11.0",
     "sinon": "^7.2.4",
     "swtc-tum3": "^0.1.2",
-    "ts-node": "^8.1.0",
     "tslint": "^5.16.0",
     "tum3-eth-abi": "^1.0.2",
     "typescript": "^3.4.5",
