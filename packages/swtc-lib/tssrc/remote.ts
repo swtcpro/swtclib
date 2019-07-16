@@ -69,24 +69,32 @@ class Remote extends EventEmitter {
   public static OrderBook = OrderBook
   public static Transaction = Transaction
   public static utils = utils
+  public static XLIB = Wallet.config.XLIB || {}
   public type
-  public abi?
-  public fun?
   public readonly AbiCoder: any = null
   public readonly Tum3: any = null
   public readonly _token
   public readonly _local_sign
   protected _issuer
-  private _url
+  private _url: string = `ws://${Remote.XLIB.default_ws ||
+    "ws.swtclib.ca:5020"}`
+  private _url_failover: string = `ws://${Remote.XLIB.default_ws_failover ||
+    "ws-failover.swtclib.ca:5020"}`
   private _server
   private _status
   private _requests
   private _cache
   private _paths
   private _solidity: boolean = false
+  private _timeout: number = 20 * 1000
+  private _failover: boolean = false
   constructor(options: IRemoteOptions = { local_sign: true }) {
     super()
     const _opts = options || {}
+    if (_opts.hasOwnProperty("timeout")) {
+      const timeout = Number(_opts.timeout)
+      this._timeout = timeout > 5 * 1000 ? timeout : 20 * 1000
+    }
     this._local_sign = true
     if (_opts.solidity) {
       this._solidity = true
@@ -99,11 +107,25 @@ class Remote extends EventEmitter {
         )
       }
     }
-    if (typeof _opts.server !== "string") {
-      this.type = new TypeError("server config not supplied")
-      return this
+    if (!_opts.hasOwnProperty("server")) {
+      this._failover = true
+    } else {
+      if (typeof _opts.server !== "string") {
+        this.type = new TypeError("server config not supplied")
+        return this
+      }
+      this._url = _opts.server
     }
-    this._url = _opts.server
+    if (_opts.hasOwnProperty("server_failover")) {
+      if (typeof _opts.server_failover !== "string") {
+        this.type = new TypeError("server_failover config not supplied")
+        return this
+      }
+      this._url_failover = _opts.server_failover
+    }
+    if (_opts.failover) {
+      this._failover = true
+    }
     this._server = new Server(this, this._url)
     this._status = {
       ledger_index: 0
@@ -148,10 +170,14 @@ class Remote extends EventEmitter {
   public config() {
     return {
       _local_sign: this._local_sign,
-      _server: this._server,
+      _failover: this._failover,
+      _url: this._url,
+      _url_failover: this._url_failover,
+      _url_active: this._server._url,
       _token: this._token,
       _issuer: this._issuer,
-      _solidity: this._solidity
+      _solidity: this._solidity,
+      _timeout: this._timeout
     }
   }
 
@@ -180,7 +206,21 @@ class Remote extends EventEmitter {
       this._server
         .connectPromise()
         .then(result => resolve(result))
-        .catch(error => reject(error))
+        .catch(error => {
+          if (!this._failover) {
+            reject(error)
+          } else {
+            if (this._server._url === this._url) {
+              this._server = new Server(this, this._url_failover)
+            } else {
+              this._server = new Server(this, this._url)
+            }
+            this._server
+              .connectPromise()
+              .then(result_failover => resolve(result_failover))
+              .catch(error_failover => reject(error_failover))
+          }
+        })
     })
   }
 
@@ -964,6 +1004,9 @@ class Remote extends EventEmitter {
     }
     const request = this._requests[req_id]
     // pass process it when null callback
+    if (request.data && request.data.abi) {
+      data.abi = request.data.abi
+    }
     delete this._requests[req_id]
     delete data.id
 
@@ -972,7 +1015,6 @@ class Remote extends EventEmitter {
       this._updateServerStatus(data.result)
     }
 
-    const self = this
     if (this._solidity) {
       // return to callback
       if (data.status === "success") {
@@ -983,8 +1025,17 @@ class Remote extends EventEmitter {
           result.tx_json.Method === 1
         ) {
           // 调用合约时，如果是获取变量，则转换一下
+          const method = utils.hexToString(result.tx_json.MethodSignature)
+          result.func = method.substring(0, method.indexOf("(")) // 函数名
+          result.func_parms = method
+            .substring(method.indexOf("(") + 1, method.indexOf(")"))
+            .split(",") // 函数参数
+          if (result.func_parms.length === 1 && result.func_parms[0] === "") {
+            // 没有参数，返回空数组
+            result.func_parms = []
+          }
           const abi = new this.AbiCoder()
-          const types = utils.getTypes(self.abi, self.fun)
+          const types = utils.getTypes(data.abi, result.func)
           result.ContractState = abi.decodeParameters(
             types,
             result.ContractState
@@ -1010,7 +1061,7 @@ class Remote extends EventEmitter {
             item.address = Wallet.KeyPair.__encode(buf)
 
             const abi = new this.AbiCoder()
-            self.abi
+            data.abi
               .filter(json => {
                 return json.type === "event"
               })

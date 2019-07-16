@@ -250,26 +250,34 @@ const Factory = (wallet_or_chain_or_token: any = "jingtum") => {
     public static OrderBook = OrderBook
     public static Request = Request
     public static Transaction = Transaction
+    public static XLIB = Wallet.config.XLIB || {}
     public static utils = utils
 
     public type
-    public abi?
-    public fun?
     public readonly AbiCoder: any = null
     public readonly Tum3: any = null
     public _token
     public _local_sign
     public _issuer
-    public _url
+    public _url: string = `ws://${Remote.XLIB.default_ws ||
+      "ws.swtclib.ca:5020"}`
+    public _url_failover: string = `ws://${Remote.XLIB.default_ws_failover ||
+      "ws-failover.swtclib.ca:5020"}`
     public _server
     public _status
     public _requests
     public _cache
     public _paths
     public _solidity: boolean = false
+    public _timeout: number = 20 * 1000
+    public _failover: boolean = false
     constructor(options: IRemoteOptions = { local_sign: true }) {
       super()
       const _opts = options || {}
+      if (_opts.hasOwnProperty("timeout")) {
+        const timeout = Number(_opts.timeout)
+        this._timeout = timeout > 5 * 1000 ? timeout : 20 * 1000
+      }
       this._local_sign = true
       if (_opts.solidity) {
         this._solidity = true
@@ -282,11 +290,25 @@ const Factory = (wallet_or_chain_or_token: any = "jingtum") => {
           )
         }
       }
-      if (typeof _opts.server !== "string") {
-        this.type = new TypeError("server config not supplied")
-        return this
+      if (!_opts.hasOwnProperty("server")) {
+        this._failover = true
+      } else {
+        if (typeof _opts.server !== "string") {
+          this.type = new TypeError("server config not supplied")
+          return this
+        }
+        this._url = _opts.server
       }
-      this._url = _opts.server
+      if (_opts.hasOwnProperty("server_failover")) {
+        if (typeof _opts.server_failover !== "string") {
+          this.type = new TypeError("server_failover config not supplied")
+          return this
+        }
+        this._url_failover = _opts.server_failover
+      }
+      if (_opts.failover) {
+        this._failover = true
+      }
       this._server = new Server(this, this._url)
       this._status = {
         ledger_index: 0
@@ -331,9 +353,14 @@ const Factory = (wallet_or_chain_or_token: any = "jingtum") => {
     public config() {
       return {
         _local_sign: this._local_sign,
-        _server: this._server,
+        _failover: this._failover,
+        _url: this._url,
+        _url_failover: this._url_failover,
+        _url_active: this._server._url,
         _token: this._token,
-        _issuer: this._issuer
+        _issuer: this._issuer,
+        _solidity: this._solidity,
+        _timeout: this._timeout
       }
     }
 
@@ -366,7 +393,21 @@ const Factory = (wallet_or_chain_or_token: any = "jingtum") => {
         this._server
           .connectPromise()
           .then(result => resolve(result))
-          .catch(error => reject(error))
+          .catch(error => {
+            if (!this._failover) {
+              reject(error)
+            } else {
+              if (this._server._url === this._url) {
+                this._server = new Server(this, this._url_failover)
+              } else {
+                this._server = new Server(this, this._url)
+              }
+              this._server
+                .connectPromise()
+                .then(result_failover => resolve(result_failover))
+                .catch(error_failover => reject(error_failover))
+            }
+          })
       })
     }
 
@@ -1151,6 +1192,9 @@ const Factory = (wallet_or_chain_or_token: any = "jingtum") => {
       }
       const request = this._requests[req_id]
       // pass process it when null callback
+      if (request.data && request.data.abi) {
+        data.abi = request.data.abi
+      }
       delete this._requests[req_id]
       delete data.id
 
@@ -1163,12 +1207,97 @@ const Factory = (wallet_or_chain_or_token: any = "jingtum") => {
         this._updateServerStatus(data.result)
       }
 
-      // return to callback
-      if (data.status === "success") {
-        const result = request.filter(data.result)
-        request && request.callback(null, result)
-      } else if (data.status === "error") {
-        request && request.callback(data.error_exception || data.error_message)
+      if (this._solidity) {
+        // return to callback
+        if (data.status === "success") {
+          const result = request.filter(data.result)
+          if (
+            result.ContractState &&
+            result.tx_json.TransactionType === "AlethContract" &&
+            result.tx_json.Method === 1
+          ) {
+            // 调用合约时，如果是获取变量，则转换一下
+            const method = utils.hexToString(result.tx_json.MethodSignature)
+            result.func = method.substring(0, method.indexOf("(")) // 函数名
+            result.func_parms = method
+              .substring(method.indexOf("(") + 1, method.indexOf(")"))
+              .split(",") // 函数参数
+            if (result.func_parms.length === 1 && result.func_parms[0] === "") {
+              // 没有参数，返回空数组
+              result.func_parms = []
+            }
+            const abi = new this.AbiCoder()
+            const types = utils.getTypes(data.abi, result.func)
+            result.ContractState = abi.decodeParameters(
+              types,
+              result.ContractState
+            )
+            types.forEach((type, i) => {
+              if (type === "address") {
+                const adr = result.ContractState[i].slice(2)
+                const buf = new Buffer(20)
+                buf.write(adr, 0, "hex")
+                result.ContractState[i] = Wallet.KeyPair.__encode(buf)
+              }
+            })
+          }
+          if (result.AlethLog) {
+            const logValue = []
+            const item = { address: "", data: {} }
+            const logs = result.AlethLog
+            logs.forEach(log => {
+              const _log = JSON.parse(log.item)
+              const _adr = _log.address.slice(2)
+              const buf = new Buffer(20)
+              buf.write(_adr, 0, "hex")
+              item.address = Wallet.KeyPair.__encode(buf)
+
+              const abi = new this.AbiCoder()
+              data.abi
+                .filter(json => {
+                  return json.type === "event"
+                })
+                .map(json => {
+                  const types = json.inputs.map(input => {
+                    return input.type
+                  })
+                  const foo = json.name + "(" + types.join(",") + ")"
+                  if (abi.encodeEventSignature(foo) === _log.topics[0]) {
+                    const data2 = abi.decodeLog(
+                      json.inputs,
+                      _log.data,
+                      _log.topics
+                    )
+                    json.inputs.forEach((input, i) => {
+                      if (input.type === "address") {
+                        const _adr2 = data2[i].slice(2)
+                        const buf2 = new Buffer(20)
+                        buf2.write(_adr2, 0, "hex")
+                        item.data[i] = Wallet.KeyPair.__encode(buf2)
+                      } else {
+                        item.data[i] = data2[i]
+                      }
+                    })
+                  }
+                })
+
+              logValue.push(item)
+            })
+            result.AlethLog = logValue
+          }
+          request && request.callback(null, result)
+        } else if (data.status === "error") {
+          request &&
+            request.callback(data.error_message || data.error_exception)
+        }
+      } else {
+        if (data.status === "success") {
+          const result = request.filter(data.result)
+          request && request.callback(null, result)
+        } else if (data.status === "error") {
+          request &&
+            request.callback(data.error_exception || data.error_message)
+        }
       }
     }
 
