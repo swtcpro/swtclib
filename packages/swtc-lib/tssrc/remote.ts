@@ -437,7 +437,7 @@ class Remote extends EventEmitter {
   /*
    * get all accounts at some ledger_index
    */
-  public requestAccounts = function(options: IRequestAccountsOptions) {
+  public requestAccounts(options: IRequestAccountsOptions) {
     const request = new Request(this, "account_count")
     if (options === null || typeof options !== "object") {
       request.message.type = new Error("invalid options type")
@@ -783,6 +783,18 @@ class Remote extends EventEmitter {
   }
   public invokeContractTx(options: IContractInvokeTxOptions) {
     return Transaction.invokeContractTx(options, this)
+  }
+  public buildContractInitTx(options: IContractInitTxOptions) {
+    return Transaction.initContractTx(options, this)
+  }
+  public buildContractInvokeTx(options: IContractInvokeTxOptions) {
+    return Transaction.invokeContractTx(options, this)
+  }
+  public buildContractDeployTx(options: IContractDeployTxOptions) {
+    return Transaction.deployContractTx(options, this)
+  }
+  public buildContractCallTx(options: IContractCallTxOptions) {
+    return Transaction.callContractTx(options, this)
   }
   public AlethEvent = function(options) {
     const request = new Request(this, "aleth_eventlog", data => data)
